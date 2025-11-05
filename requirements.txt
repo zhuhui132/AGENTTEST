@@ -1,0 +1,46 @@
+# 核心测试框架
+pytest>=6.0.0
+pytest-cov>=2.12.0
+pytest-mock>=3.6.0
+
+# 性能监控
+psutil>=5.8.0
+memory-profiler>=0.58.0
+
+# 异步测试
+pytest-asyncio>=0.18.0
+
+# 数据处理
+pandas>=1.3.0
+numpy>=1.20.0
+
+# 图表生成
+matplotlib>=3.4.0
+seaborn>=0.11.0
+
+# HTTP测试
+requests>=2.25.0
+httpx>=0.23.0
+
+# 日期时间处理
+python-dateutil>=2.8.0
+
+# 文档生成
+sphinx>=4.0.0
+sphinx-rtd-theme>=0.5.0
+
+# 代码质量
+black>=21.0.0
+flake8>=3.9.0
+mypy>=0.910
+
+# 测试数据生成
+faker>=8.0.0
+hypothesis>=6.0.0
+
+# 并发测试
+pytest-xdist>=2.4.0
+
+# 测试报告
+pytest-html>=3.1.0
+pytest-json-report>=1.4.0

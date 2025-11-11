@@ -1,324 +1,360 @@
-# 🎯 Agent测试方法论项目
+# 🤖 Advanced Agent System
 
-## 📖 项目简介
+> 一个基于大语言模型的智能对话Agent系统，具备记忆系统、RAG检索、工具调用等完整功能。
 
-这是一个**全面的Agent测试方法论实现项目**，专门针对Agent系统（特别是具身智能Agent）的测试需求，构建了**科学、实用、可落地**的测试体系。
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
 
----
+## ✨ 特性
 
-## 🌟 项目特色
+- 🧠 **智能Agent**: 基于大语言模型的智能对话Agent
+- 🧠 **记忆系统**: 多类型记忆支持（情景、语义、工作记忆、程序性记忆）
+- 🔍 **RAG检索**: 检索增强生成，支持多种文档类型和高级检索策略
+- 🛠️ **工具调用**: 灵活的工具系统，支持并发执行和自定义工具
+- 📊 **性能监控**: 完整的指标收集和监控系统
+- 🧪 **完整测试**: 多层次测试体系，覆盖单元、集成、端到端和性能测试
+- 🔧 **模块化设计**: 清晰的模块化架构，易于扩展和维护
+- 🧱 **全新架构**: `IntelligentAgent`、`MemorySystem`、`RAGSystem`、`ToolSystem` 重新实现，统一异步接口
 
-### 🧠 智能化测试方法论
-- **具身智能特化**: 针对机器人、自动驾驶等具身智能Agent的专门测试方法
-- **多模态支持**: 支持文本、图像、音频、传感器数据等多模态测试
-- **实时性验证**: 具备毫秒级响应时间测试和实时性能监控
-- **安全合规**: 内置安全测试、风险评估和合规性检查
+### ♻️ 重构要点
 
-### 🏗️ 科学化架构设计
-- **四层测试金字塔**: 单元→集成→端到端→性能的完整测试体系
-- **模块化组件**: 记忆、RAG、工具、上下文四大核心组件
-- **异步架构**: 全面采用async/await，支持高并发测试
-- **可扩展设计**: 支持自定义测试指标和评估方法
+- `IntelligentAgent` 现已完全实现 `BaseAgent` 接口，支持异步上下文构建与工具动态调度
+- `MemorySystem`、`RAGSystem` 改为异步实现，内置相似度评分、容量淘汰和统计方法
+- `ToolSystem` 支持异步注册与健康检查，并内置默认计算器工具，便于快速扩展
+- `ContextManager` 提供轻量级上下文摘要、实体与意图推断，方便自定义增强
+- 顶层 `src/__init__.py` 与根目录 `agent.py` 统一导出核心 API，方便第三方引入
 
-### 📊 专业化指标体系
-- **50+质量指标**: 覆盖质量、性能、业务、技术四大维度
-- **智能评估**: 基于机器学习的自动化质量评估
-- **基准对比**: 与行业标准和最佳实践的对比分析
-- **实时监控**: 支持实时性能指标监控和告警
-
----
-
-## 🏗️ 项目架构
+## 🏗️ 项目结构
 
 ```
-🎯 Agent测试方法论项目
-├── 📚 完整文档体系 (14个专业文档)
-│   ├── 📖 项目导航 (1个文档)
-│   │   └── 00-项目导航.md              # 项目导航中心
-│   ├── 📚 基础理论层 (3个文档)
-│   │   ├── 01-项目介绍.md              # 项目详细介绍
-│   │   ├── 02-核心概念.md              # 核心概念和原理
-│   │   └── 03-系统架构.md              # 系统架构设计
-│   ├── 🧪 测试方法论层 (3个文档)
-│   │   ├── 04-测试方法论.md            # 测试方法论体系
-│   │   ├── 05-质量指标.md              # 质量指标体系
-│   │   └── 06-最佳实践.md              # 最佳实践指南
-│   ├── 💻 技术实现层 (3个文档)
-│   │   ├── 07-技术实现指南.md          # 技术实现指南
-│   │   ├── 08-开发工作流程.md          # 开发工作流程
-│   │   └── 09-案例分析.md              # 实际案例研究
-│   └── 📚 附录资料层 (4个文档)
-│       ├── A-术语表.md                 # 专业术语表
-│       ├── B-参考文献.md                # 参考文献
-│       ├── C-贡献指南.md                # 贡献指南
-│       └── 10-综合总结.md               # 项目综合总结
-├── 🔧 核心实现 (6个模块)
-│   ├── agent.py                        # Agent核心类 (25KB)
-│   ├── memory.py                       # 记忆系统 (5KB)
-│   ├── rag.py                          # RAG检索系统 (5KB)
-│   ├── tools.py                        # 工具系统 (6KB)
-│   ├── context.py                      # 上下文管理 (8KB)
-│   ├── metrics.py                      # 测试指标体系 (20KB)
-│   └── 开发实现总结.md                  # 开发实现总结
-├── 🧪 测试体系 (14个测试文件)
-│   ├── unit/                           # 单元测试层
-│   │   ├── test_agent.py               # Agent基础测试
-│   │   ├── test_memory.py              # 记忆系统测试
-│   │   ├── test_agent_comprehensive.py # Agent综合测试
-│   │   ├── test_memory_advanced.py     # 记忆系统高级测试
-│   │   ├── test_rag_advanced.py        # RAG系统高级测试
-│   │   └── test_tools_advanced.py      # 工具系统高级测试
-│   ├── integration/                    # 集成测试层
-│   │   ├── test_agent_memory_integration.py    # Agent-记忆集成
-│   │   ├── test_agent_metrics.py              # Agent-指标集成
-│   │   ├── test_agent_full_integration.py       # 全组件集成
-│   │   └── test_integration_advanced.py           # 高级集成测试
-│   ├── e2e/                            # 端到端测试层
-│   │   ├── test_complete_conversation_flow.py  # 完整对话流程
-│   │   └── test_agent_e2e.py                  # 端到端功能测试
-│   ├── performance/                     # 性能测试层
-│   │   ├── test_load_testing.py             # 负载压力测试
-│   │   └── test_agent_performance.py        # 性能指标测试
-│   └── 测试体系总结.md                   # 测试体系总结
-├── 💡 配置和示例
-│   ├── requirements.txt                 # 依赖管理
-│   ├── pytest.ini                      # 测试框架配置
-│   └── examples/                        # 使用示例
-└── 📄 LICENSE                         # MIT许可证
+agentTest/
+├── src/                    # 源代码
+│   ├── core/               # 核心模块
+│   │   ├── types.py        # 核心数据类型
+│   │   ├── interfaces.py  # 基础接口定义
+│   │   ├── exceptions.py   # 异常类定义
+│   │   └── config.py      # 配置管理
+│   ├── agents/             # Agent实现
+│   ├── llm/               # 大语言模型
+│   ├── memory/            # 记忆系统
+│   ├── rag/               # RAG检索
+│   ├── utils/             # 工具模块
+│   └── ml/                # 机器学习模块
+├── tests/                  # 测试代码
+│   ├── unit/               # 单元测试
+│   ├── integration/         # 集成测试
+│   ├── e2e/                # 端到端测试
+│   └── performance/         # 性能测试
+├── docs/                   # 文档
+│   ├── guide/               # 指南文档
+│   ├── tutorials/           # 教程
+│   ├── reference/           # 参考文档
+│   └── api/                 # API文档
+└── examples/               # 示例代码
 ```
-
----
 
 ## 🚀 快速开始
 
-### 🔧 环境准备
+### 安装
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/your-org/agent-testing.git
-cd agent-testing
+# 克隆仓库
+git clone <repository-url>
+cd agentTest
 
-# 2. 安装依赖
+# 创建虚拟环境
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# 或
+venv\Scripts\activate  # Windows
+
+# 安装依赖
 pip install -r requirements.txt
-
-# 3. 验证安装
-python -c "from src.agent import AdvancedAgent; print('✅ 环境配置成功')"
 ```
 
-### 🧪 运行测试
+### 基础使用
+
+```python
+import asyncio
+from src import Agent, IntelligentAgent, AgentConfig, LLMConfig
+
+async def main():
+    # 创建配置
+    llm_config = LLMConfig(
+        model_name="gpt-3.5-turbo",
+        temperature=0.7,
+        max_tokens=2048
+    )
+
+    agent_config = AgentConfig(
+        name="my_assistant",
+        llm_config=llm_config,
+        memory_enabled=True,
+        rag_enabled=True,
+        tools_enabled=True
+    )
+
+    # 创建Agent实例
+    agent = IntelligentAgent(agent_config)
+
+    # 初始化
+    await agent.initialize()
+
+    # 处理消息
+    response = await agent.process_message("你好，请介绍一下你的功能")
+    print(response.content)
+    print(f"推理过程: {response.reasoning}")
+    print(f"置信度: {response.confidence}")
+    print(f"处理时间: {response.processing_time}s")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+> 需要同步接口时，可直接使用根目录下的 `Agent` 包装类：
+
+```python
+from agent import Agent
+
+legacy_agent = Agent("legacy_helper")
+result = legacy_agent.process_message("请计算 12 * 8")
+print(result["response"])
+```
+
+### 自定义工具
+
+```python
+from src.core import BaseTool, ToolResult
+
+class CalculatorTool(BaseTool):
+    async def execute(self, parameters):
+        try:
+            expression = parameters.get("expression", "")
+            result = eval(expression)
+            return ToolResult(
+                tool_name="calculator",
+                success=True,
+                result=result,
+                execution_time=0.1
+            )
+        except Exception as e:
+            return ToolResult(
+                tool_name="calculator",
+                success=False,
+                error=str(e)
+            )
+
+    def get_schema(self):
+        return {
+            "type": "function",
+            "function": {
+                "name": "calculator",
+                "description": "计算数学表达式",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "expression": {
+                            "type": "string",
+                            "description": "要计算的数学表达式"
+                        }
+                    },
+                    "required": ["expression"]
+                }
+            }
+        }
+
+# 注册工具
+agent.register_tool("calculator", CalculatorTool())
+```
+
+### RAG系统使用
+
+```python
+from src import RAGSystem
+
+async def rag_example():
+    rag = RAGSystem()
+
+    # 添加文档
+    await rag.add_document(
+        title="Python基础",
+        content="Python是一种高级编程语言...",
+        source="https://docs.python.org"
+    )
+
+    # 检索相关文档
+    docs = await rag.retrieve("Python编程语言", limit=3)
+
+    for doc in docs:
+        print(f"标题: {doc.title}")
+        print(f"内容片段: {doc.content[:100]}...")
+        print(f"相关度: {doc.get('score', 0)}")
+        print("-" * 50)
+```
+
+## 🧪 测试
+
+运行完整测试套件：
 
 ```bash
 # 运行所有测试
-pytest tests/ -v --cov=src
+pytest
 
-# 运行特定层级测试
-pytest tests/unit/ -v              # 单元测试
-pytest tests/integration/ -v         # 集成测试
-pytest tests/e2e/ -v             # 端到端测试
-pytest tests/performance/ -v       # 性能测试
+# 运行单元测试
+pytest tests/unit/
+
+# 运行集成测试
+pytest tests/integration/
+
+# 运行端到端测试
+pytest tests/e2e/
+
+# 运行性能测试
+pytest tests/performance/
 
 # 生成覆盖率报告
-pytest tests/ --cov=src --cov-report=html
+pytest --cov=src --cov-report=html
 ```
 
-### 💡 使用示例
+测试覆盖率目标：
+- 单元测试覆盖率 > 85%
+- 集成测试覆盖率 > 75%
+- 端到端成功率 > 95%
 
-```python
-# Agent使用示例
-from src.agent import AdvancedAgent
+## 📊 性能指标
 
-# 创建Agent
-config = {
-    "memory": {"max_memories": 100},
-    "rag": {"max_documents": 1000},
-    "tools": {"enable_all": True}
-}
+| 指标 | 目标值 | 当前值 |
+|------|--------|----------|
+| 响应时间 | < 2s | 测试中... |
+| 并发处理 | 10+ | 测试中... |
+| 内存使用 | < 1GB | 测试中... |
+| 缓存命中率 | > 70% | 测试中... |
+| 错误率 | < 1% | 测试中... |
 
-agent = AdvancedAgent("TestAgent", config=config)
+## 📚 文档
 
-# 处理消息
-response = await agent.process_message("你好，请介绍一下你的功能")
+详细文档请查看 [docs/](docs/) 目录：
 
-print(f"回复: {response.content}")
-print(f"置信度: {response.confidence}")
-print(f"处理时间: {response.processing_time}")
+- 📖 [指南文档](docs/guide/) - 项目导航和核心概念
+- 📚 [教程文档](docs/tutorials/) - 开发流程和案例分析
+- 🔧 [参考文档](docs/reference/) - API文档和技术细节
+- 🧠 [知识库](docs/reference/深度学习与AI知识库.md) - 完整的AI知识库
+
+### 核心概念
+
+- **Agent**: 智能对话代理的核心组件
+- **记忆系统**: 多层次的信息存储和检索
+- **RAG**: 检索增强生成，结合知识库回答
+- **工具调用**: 扩展Agent能力的工具接口
+- **上下文管理**: 对话历史和上下文理解
+
+## 🔧 配置
+
+### 环境变量
+
+```bash
+export AGENT_DEBUG=true                    # 调试模式
+export AGENT_LOG_LEVEL=INFO               # 日志级别
+export AGENT_LLM_MODEL=gpt-3.5-turbo      # LLM模型
+export AGENT_LLM_API_KEY=your-api-key     # API密钥
+export AGENT_MEMORY_ENABLED=true           # 启用记忆
+export AGENT_RAG_ENABLED=true              # 启用RAG
 ```
 
----
+### 配置文件
 
-## 📊 项目统计
+创建 `config/agent/default.yaml`：
 
-| 维度 | 数量 | 说明 |
-|------|------|------|
-| **文档文件** | 14个 | 专业中文文档 |
-| **代码文件** | 6个 | Python核心实现 |
-| **测试文件** | 14个 | 四层测试体系 |
-| **代码行数** | 60,000+ | 高质量生产级代码 |
-| **测试用例** | 100+ | 覆盖所有功能 |
-| **质量指标** | 50+ | 多维度评估体系 |
+```yaml
+name: "production_agent"
+debug_mode: false
+log_level: "INFO"
 
----
+llm:
+  model_name: "gpt-3.5-turbo"
+  max_tokens: 2048
+  temperature: 0.7
+  timeout: 30.0
 
-## 🎯 核心功能
+memory:
+  max_memories: 10000
+  retrieval_limit: 5
+  importance_decay_rate: 0.99
 
-### 🤖 智能Agent系统
-- **异步消息处理**: 支持高并发消息处理
-- **多组件集成**: 无缝集成记忆、RAG、工具、上下文
-- **状态管理**: 完整的Agent生命周期管理
-- **回调机制**: 事件驱动的扩展能力
+rag:
+  max_documents: 10000
+  retrieval_limit: 5
+  similarity_threshold: 0.7
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
 
-### 💾 记忆系统
-- **多类型记忆**: 情景、语义、工作、程序四种记忆类型
-- **智能检索**: 基于内容、时间、重要性的综合检索
-- **时间衰减**: 自动处理记忆的时间衰减
-- **持久化**: 支持记忆数据的持久化存储
+tools:
+  max_tools: 100
+  default_timeout: 30.0
+  parallel_execution: true
+```
 
-### 📚 RAG检索系统
-- **智能分块**: 自动文档分块和重叠处理
-- **多策略检索**: 向量相似度、关键词匹配、混合策略
-- **实时索引**: 多维度的快速检索索引
-- **缓存机制**: 检索结果的智能缓存
+## 🤝 贡献
 
-### 🛠️ 工具系统
-- **工具注册**: 灵活的工具注册和管理机制
-- **参数验证**: 完整的参数类型和值验证
-- **异步执行**: 支持异步工具执行和超时控制
-- **内置工具**: 计算器、时间查询、天气查询等内置工具
+我们欢迎所有形式的贡献！请查看 [贡献指南](docs/reference/C-贡献指南.md) 了解详细信息。
 
-### 📈 测试指标体系
-- **准确性评估**: 事实准确性、答案正确性、一致性检查
-- **安全性检测**: 毒性检测、隐私保护、风险评估
-- **性能监控**: 响应时间、吞吐量、资源使用监控
-- **综合评估**: 多维度的综合质量评估
+### 开发环境设置
 
----
+```bash
+# 安装开发依赖
+pip install -r requirements-dev.txt
 
-## 🌟 项目亮点
+# 安装pre-commit hooks
+pre-commit install
 
-### 🏆 技术创新
-- **首个完整的Agent测试方法论**: 填补行业空白
-- **具身智能特化**: 针对物理世界交互Agent的专门测试
-- **智能化测试**: 基于AI的自动化测试技术
+# 运行代码质量检查
+flake8 src/
+mypy src/
+black src/
+isort src/
 
-### 🚀 工程实践
-- **生产级代码**: 60,000+行高质量、可维护代码
-- **异步架构**: 全面异步化，支持高并发处理
-- **模块化设计**: 松耦合、可扩展的组件架构
+# 运行测试
+pytest
+```
 
-### 📊 质量保证
-- **四层测试覆盖**: 单元→集成→端到端→性能
-- **50+质量指标**: 多维度的质量评估体系
-- **自动化测试**: 100%自动化的测试执行
+### 提交规范
 
-### 🌍 生态友好
-- **完全中文化**: 14个专业中文文档，降低学习门槛
-- **开源协议**: MIT许可证，鼓励社区参与
-- **持续改进**: 活跃的开发和社区支持
-
----
-
-## 🎯 应用场景
-
-### 🎓 学术研究
-- **Agent系统质量保证研究**: 提供理论基础和实验平台
-- **具身智能测试方法论**: 独具特色的测试方法
-- **测试自动化技术**: 智能化测试用例生成
-
-### 🏢 企业应用
-- **生产环境Agent测试**: 完整的测试解决方案
-- **质量保证体系**: 科学的质量管理方法
-- **性能监控优化**: 实时性能评估和改进
-
-### 📚 教育培训
-- **测试方法论教学**: 完整的教学案例和实践材料
-- **Agent开发培训**: 从理论到实践的完整课程
-- **最佳实践推广**: 行业标准和经验分享
-
-### 🌐 开源项目
-- **标准化测试框架**: 标准化的Agent测试框架
-- **社区标准制定**: 推动测试标准化发展
-- **生态系统建设**: 构建测试工具和服务生态
-
-
-## 🤝 贡献指南
-
-我们欢迎所有形式的贡献！
-
-### 📋 贡献方式
-1. **Fork项目并创建特性分支**
-2. **进行开发和测试**
-3. **提交代码和文档**
-4. **创建Pull Request**
-
-### 🎯 贡献方向
-- **🧪 测试方法改进**: 新的测试策略和技术
-- **📊 指标体系完善**: 新的评估指标和方法
-- **🔧 工具链优化**: 测试工具和框架改进
-- **📚 文档完善**: 教程、示例和最佳实践
-- **🐛 Bug修复**: 发现和修复系统问题
-- **🚀 性能优化**: 提升系统性能和效率
-
----
-
-## 📞 联系方式
-
-### 🔗 项目链接
-- **项目主页**: https://github.com/your-org/agent-testing
-- **文档地址**: https://agent-testing.readthedocs.io
-- **在线演示**: https://demo.agent-testing.org
-
-### 💬 社区交流
-
-
+- 使用清晰的commit消息
+- 遵循[Conventional Commits](https://www.conventionalcommits.org/)
+- 确保所有测试通过
+- 更新相关文档
 
 ## 📄 许可证
 
-本项目采用 **MIT 许可证**，这意味着您可以：
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
-✅ **自由使用**: 无论是个人、学术还是商业用途
-✅ **自由修改**: 可以根据自己的需求修改代码
-✅ **自由分发**: 可以分享和分发项目
-✅ **商业使用**: 可以用于商业项目中
+## 🙏 致谢
 
-详见 [LICENSE](LICENSE) 文件了解详细条款。
+感谢以下开源项目的启发和支持：
 
----
+- [LangChain](https://github.com/langchain-ai/langchain)
+- [Hugging Face Transformers](https://github.com/huggingface/transformers)
+- [ChromaDB](https://github.com/chroma-core/chroma)
+- [FastAPI](https://github.com/tiangolo/fastapi)
 
-## 🎉 致谢
+## 📞 联系
 
-感谢所有为Agent测试方法论项目做出贡献的开发者、研究者、测试工程师和用户！
+- 项目主页: [GitHub Repository]
+- 问题反馈: [GitHub Issues]
+- 邮箱: [maintainer-email]
 
-特别感谢：
-- **开源社区**: 提供了优秀的开源工具和框架
-- **用户反馈**: 提供了宝贵的使用反馈和改进建议
-- **合作伙伴**: 提供了实际应用场景和需求
-- **学术机构**: 提供了理论基础和研究支持
+## 🗺️ 路线图
 
----
-
-## 🚀 立即开始
-
-准备好开始您的Agent测试之旅了吗？
-
-```bash
-# 1. 克隆项目
-git clone https://github.com/your-org/agent-testing.git
-cd agent-testing
-
-# 2. 快速体验
-python examples/agent_usage_example.py
-
-# 3. 运行测试
-pytest tests/unit/ -v
-
-# 4. 查看文档
-cat docs/00-项目导航.md
-```
-
-现在就开始探索Agent测试的精彩世界吧！🎊
+- [x] v1.0.0 - 基础Agent框架
+- [x] v2.0.0 - 集成记忆和RAG系统
+- [x] v3.0.0 - 完整的测试体系和知识库
+- [ ] v3.1.0 - 性能优化和监控
+- [ ] v3.2.0 - 多模态支持
+- [ ] v4.0.0 - 分布式Agent系统
 
 ---
 
-*最后更新时间: 2025-11-05*
-*项目版本: v1.0.0*
-*维护团队: Agent Testing Team*
+<div align="center">
+  <p>如果这个项目对您有帮助，请给我们一个 ⭐️</p>
+</div>
+
+*最后更新: 2025-11-07*

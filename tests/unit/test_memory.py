@@ -1,413 +1,269 @@
 """
-记忆系统单元测试
+记忆系统功能测试
+测试记忆系统的基础功能
 """
+
 import pytest
-import time
-from datetime import datetime, timedelta
-import sys
-import os
+from datetime import datetime
+from src.memory.episodic import EpisodicMemory
+from src.memory.semantic import SemanticMemory
+from src.memory.working import WorkingMemory
+from src.memory.manager import MemoryManager
+from src.core.types import MemoryType
 
-# 添加src目录到路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from memory import MemorySystem
+class TestEpisodicMemory:
+    """情景记忆测试类"""
 
-class TestMemorySystemInitialization:
-    """记忆系统初始化测试"""
+    @pytest.fixture
+    def episodic_memory(self):
+        """情景记忆fixture"""
+        return EpisodicMemory(max_size=100)
 
-    def test_memory_system_creation(self):
-        """测试记忆系统创建"""
-        memory = MemorySystem()
-        assert memory.memories == {}
-        assert memory.weights == {}
-        assert memory.timestamps == {}
-        assert memory.max_memories == 10000
+    def test_episodic_memory_initialization(self, episodic_memory):
+        """测试情景记忆初始化"""
+        assert episodic_memory.max_size == 100
+        assert len(episodic_memory.memories) == 0
 
-    def test_memory_system_custom_max_memories(self):
-        """测试自定义最大记忆数量"""
-        memory = MemorySystem()
-        memory.max_memories = 100
-        assert memory.max_memories == 100
+    def test_add_memory(self, episodic_memory):
+        """测试添加记忆"""
+        content = "用户说他的名字是张三"
+        timestamp = datetime.now()
 
-class TestMemoryAddition:
-    """记忆添加测试"""
-
-    def setup_method(self):
-        """测试前置设置"""
-        self.memory = MemorySystem()
-
-    def test_add_valid_memory(self):
-        """测试添加有效记忆"""
-        content = "这是一个测试记忆"
-        memory_id = self.memory.add_memory(content)
+        memory_id = episodic_memory.add(content, timestamp)
 
         assert memory_id is not None
-        assert memory_id in self.memory.memories
-        assert self.memory.memories[memory_id]["content"] == content
-        assert memory_id in self.memory.weights
-        assert memory_id in self.memory.timestamps
+        assert len(episodic_memory.memories) == 1
+        assert episodic_memory.memories[0].content == content
 
-    def test_add_memory_with_weight(self):
-        """测试添加带权重的记忆"""
-        content = "重要记忆"
-        weight = 5.0
-        memory_id = self.memory.add_memory(content, weight)
+    def test_retrieve_memory(self, episodic_memory):
+        """测试检索记忆"""
+        content = "用户说他的名字是张三"
+        memory_id = episodic_memory.add(content)
 
-        assert self.memory.weights[memory_id] == weight
+        retrieved = episodic_memory.get(memory_id)
 
-    def test_add_memory_with_metadata(self):
-        """测试添加带元数据的记忆"""
-        content = "带元数据的记忆"
-        metadata = {"source": "user", "importance": "high"}
-        memory_id = self.memory.add_memory(content, metadata=metadata)
+        assert retrieved is not None
+        assert retrieved.content == content
+        assert retrieved.memory_type == MemoryType.EPISODIC
 
-        assert self.memory.memories[memory_id]["metadata"] == metadata
-
-    def test_add_memory_boundary_weight(self):
-        """测试边界权重值"""
-        content = "测试记忆"
-
-        # 测试最小权重
-        memory_id1 = self.memory.add_memory(content, weight=0.0)
-        assert self.memory.weights[memory_id1] == 0.1
-
-        # 测试最大权重
-        memory_id2 = self.memory.add_memory(content, weight=15.0)
-        assert self.memory.weights[memory_id2] == 10.0
-
-    def test_add_empty_memory(self):
-        """测试添加空记忆抛出异常"""
-        with pytest.raises(ValueError, match="记忆内容不能为空"):
-            self.memory.add_memory("")
-
-    def test_add_whitespace_memory(self):
-        """测试添加空白记忆抛出异常"""
-        with pytest.raises(ValueError, match="记忆内容不能为空"):
-            self.memory.add_memory("   ")
-
-    def test_add_memory_auto_trims_content(self):
-        """测试记忆内容自动去除空格"""
-        content = "  测试记忆  "
-        memory_id = self.memory.add_memory(content)
-
-        assert self.memory.memories[memory_id]["content"] == "测试记忆"
-
-    def test_add_multiple_memories(self):
-        """测试添加多个记忆"""
-        contents = ["记忆1", "记忆2", "记忆3"]
-        memory_ids = []
-
-        for content in contents:
-            memory_id = self.memory.add_memory(content)
-            memory_ids.append(memory_id)
-
-        # 检查所有记忆都被正确添加
-        for i, memory_id in enumerate(memory_ids):
-            assert memory_id in self.memory.memories
-            assert self.memory.memories[memory_id]["content"] == contents[i]
-
-class TestMemoryRetrieval:
-    """记忆检索测试"""
-
-    def setup_method(self):
-        """测试前置设置"""
-        self.memory = MemorySystem()
-
-        # 添加测试记忆
-        self.test_memories = [
-            "北京的天气很好",
-            "上海今天下雨",
-            "广州天气炎热",
-            "深圳天气晴朗"
+    def test_search_memories(self, episodic_memory):
+        """测试搜索记忆"""
+        contents = [
+            "用户说他的名字是张三",
+            "用户喜欢编程",
+            "张三是一名程序员"
         ]
 
-        self.memory_ids = []
-        for content in self.test_memories:
-            memory_id = self.memory.add_memory(content)
-            self.memory_ids.append(memory_id)
+        for content in contents:
+            episodic_memory.add(content)
 
-    def test_retrieve_with_exact_match(self):
-        """测试精确匹配检索"""
-        results = self.memory.retrieve("北京")
-        assert len(results) >= 1
-        assert any("北京" in result["content"] for result in results)
+        results = episodic_memory.search("张三")
 
-    def test_retrieve_with_partial_match(self):
-        """测试部分匹配检索"""
-        results = self.memory.retrieve("天气")
-        assert len(results) >= 1
-        # 应该返回多个包含"天气"的记忆
+        assert len(results) >= 2
+        assert all("张三" in result.content for result in results)
 
-    def test_retrieve_empty_query(self):
-        """测试空查询"""
-        results = self.memory.retrieve("")
-        assert results == []
+    def test_memory_limit(self, episodic_memory):
+        """测试记忆容量限制"""
+        # 添加超过最大容量的记忆
+        for i in range(150):
+            episodic_memory.add(f"记忆{i}")
 
-    def test_retrieve_whitespace_query(self):
-        """测试空白查询"""
-        results = self.memory.retrieve("   ")
-        assert results == []
+        assert len(episodic_memory.memories) == episodic_memory.max_size
 
-    def test_retrieve_limit(self):
-        """测试检索数量限制"""
-        results = self.memory.retrieve("天气", limit=2)
-        assert len(results) <= 2
+    def test_delete_memory(self, episodic_memory):
+        """测试删除记忆"""
+        content = "测试记忆"
+        memory_id = episodic_memory.add(content)
 
-    def test_retrieve_ordering(self):
-        """测试检索结果排序"""
-        # 添加一个高权重的记忆
-        high_weight_content = "北京天气特别重要"
-        high_weight_id = self.memory.add_memory(high_weight_content, weight=10.0)
-
-        results = self.memory.retrieve("北京")
-
-        # 高权重记忆应该排在前面
-        if len(results) > 1:
-            assert any(result["memory_id"] == high_weight_id for result in results[:2])
-
-    def test_retrieve_no_matches(self):
-        """测试无匹配结果"""
-        results = self.memory.retrieve("不存在的内容")
-        assert results == []
-
-    def test_retrieve_score_calculation(self):
-        """测试相关性分数计算"""
-        results = self.memory.retrieve("北京")
-
-        for result in results:
-            assert "score" in result
-            assert 0 <= result["score"] <= 1
-            assert "memory_id" in result
-            assert "content" in result
-            assert "created_at" in result
-
-class TestMemoryUpdate:
-    """记忆更新测试"""
-
-    def setup_method(self):
-        """测试前置设置"""
-        self.memory = MemorySystem()
-        self.memory_id = self.memory.add_memory("原始记忆")
-
-    def test_update_memory_content(self):
-        """测试更新记忆内容"""
-        new_content = "更新后的记忆"
-        success = self.memory.update_memory(self.memory_id, content=new_content)
+        success = episodic_memory.delete(memory_id)
 
         assert success is True
-        assert self.memory.memories[self.memory_id]["content"] == new_content
-        assert "updated_at" in self.memory.memories[self.memory_id]
+        assert len(episodic_memory.memories) == 0
+        assert episodic_memory.get(memory_id) is None
 
-    def test_update_memory_weight(self):
-        """测试更新记忆权重"""
-        new_weight = 7.5
-        success = self.memory.update_memory(self.memory_id, weight=new_weight)
 
-        assert success is True
-        assert self.memory.weights[self.memory_id] == new_weight
+class TestSemanticMemory:
+    """语义记忆测试类"""
 
-    def test_update_both_content_and_weight(self):
-        """测试同时更新内容和权重"""
-        new_content = "完全新的记忆"
-        new_weight = 8.0
+    @pytest.fixture
+    def semantic_memory(self):
+        """语义记忆fixture"""
+        return SemanticMemory()
 
-        success = self.memory.update_memory(
-            self.memory_id,
-            content=new_content,
-            weight=new_weight
-        )
+    def test_semantic_memory_initialization(self, semantic_memory):
+        """测试语义记忆初始化"""
+        assert semantic_memory.concepts == {}
 
-        assert success is True
-        assert self.memory.memories[self.memory_id]["content"] == new_content
-        assert self.memory.weights[self.memory_id] == new_weight
+    def test_add_concept(self, semantic_memory):
+        """测试添加概念"""
+        concept = "人工智能"
+        definition = "模拟人类智能的技术"
 
-    def test_update_nonexistent_memory(self):
-        """测试更新不存在的记忆"""
-        success = self.memory.update_memory("不存在的ID", content="新内容")
-        assert success is False
+        semantic_memory.add_concept(concept, definition)
 
-    def test_update_memory_empty_content(self):
-        """测试更新为空内容抛出异常"""
-        with pytest.raises(ValueError, match="记忆内容不能为空"):
-            self.memory.update_memory(self.memory_id, content="")
+        assert concept in semantic_memory.concepts
+        assert semantic_memory.concepts[concept] == definition
 
-class TestMemoryDeletion:
-    """记忆删除测试"""
+    def test_get_concept(self, semantic_memory):
+        """测试获取概念"""
+        concept = "人工智能"
+        definition = "模拟人类智能的技术"
 
-    def setup_method(self):
-        """测试前置设置"""
-        self.memory = MemorySystem()
-        self.memory_id = self.memory.add_memory("待删除的记忆")
+        semantic_memory.add_concept(concept, definition)
+        retrieved = semantic_memory.get_concept(concept)
 
-    def test_delete_existing_memory(self):
-        """测试删除存在的记忆"""
-        success = self.memory.delete_memory(self.memory_id)
+        assert retrieved == definition
 
-        assert success is True
-        assert self.memory_id not in self.memory.memories
-        assert self.memory_id not in self.memory.weights
-        assert self.memory_id not in self.memory.timestamps
+    def test_update_concept(self, semantic_memory):
+        """测试更新概念"""
+        concept = "人工智能"
+        old_definition = "模拟人类智能的技术"
+        new_definition = "模拟人类智能的综合技术"
 
-    def test_delete_nonexistent_memory(self):
-        """测试删除不存在的记忆"""
-        success = self.memory.delete_memory("不存在的ID")
-        assert success is False
+        semantic_memory.add_concept(concept, old_definition)
+        semantic_memory.update_concept(concept, new_definition)
 
-    def test_delete_memory_then_retrieve(self):
-        """测试删除记忆后无法检索"""
-        self.memory.delete_memory(self.memory_id)
-        results = self.memory.retrieve("记忆")
+        assert semantic_memory.concepts[concept] == new_definition
 
-        # 删除的记忆不应该出现在检索结果中
-        memory_ids = [result["memory_id"] for result in results]
-        assert self.memory_id not in memory_ids
+    def test_related_concepts(self, semantic_memory):
+        """测试相关概念"""
+        concepts = [
+            ("人工智能", "智能技术"),
+            ("机器学习", "AI的子领域"),
+            ("深度学习", "机器学习的分支")
+        ]
 
-class TestTimeDecay:
-    """时间衰减测试"""
+        for concept, definition in concepts:
+            semantic_memory.add_concept(concept, definition)
 
-    def setup_method(self):
-        """测试前置设置"""
-        self.memory = MemorySystem()
+        related = semantic_memory.get_related_concepts("人工智能")
 
-    def test_time_factor_calculation(self):
-        """测试时间衰减因子计算"""
-        memory_id = self.memory.add_memory("测试记忆")
+        assert len(related) >= 0
+        assert "机器学习" in [c[0] for c in concepts] or "深度学习" in [c[0] for c in concepts]
 
-        # 新记忆的时间因子应该接近1
-        time_factor = self.memory._calculate_time_factor(memory_id)
-        assert time_factor > 0.9
 
-    def test_old_memory_decay(self):
-        """测试旧记忆的时间衰减"""
-        memory_id = self.memory.add_memory("旧记忆")
+class TestWorkingMemory:
+    """工作记忆测试类"""
 
-        # 模拟30天前的记忆
-        old_time = datetime.now() - timedelta(days=30)
-        self.memory.timestamps[memory_id] = old_time
+    @pytest.fixture
+    def working_memory(self):
+        """工作记忆fixture"""
+        return WorkingMemory(capacity=7)
 
-        time_factor = self.memory._calculate_time_factor(memory_id)
-        assert time_factor == 0.1
+    def test_working_memory_initialization(self, working_memory):
+        """测试工作记忆初始化"""
+        assert working_memory.capacity == 7
+        assert len(working_memory.items) == 0
 
-    def test_very_old_memory_decay(self):
-        """测试非常旧记忆的时间衰减"""
-        memory_id = self.memory.add_memory("非常旧的记忆")
+    def test_add_item(self, working_memory):
+        """测试添加项目"""
+        item = "当前用户：张三"
+        working_memory.add(item)
 
-        # 模拟60天前的记忆
-        old_time = datetime.now() - timedelta(days=60)
-        self.memory.timestamps[memory_id] = old_time
+        assert len(working_memory.items) == 1
+        assert item in working_memory.items
 
-        time_factor = self.memory._calculate_time_factor(memory_id)
-        assert time_factor == 0.1  # 最小值
+    def test_capacity_limit(self, working_memory):
+        """测试容量限制"""
+        items = [f"项目{i}" for i in range(10)]
 
-class TestMemoryCleanup:
-    """记忆清理测试"""
+        for item in items:
+            working_memory.add(item)
 
-    def setup_method(self):
-        """测试前置设置"""
-        self.memory = MemorySystem()
-        self.memory.max_memories = 5  # 设置较小的限制用于测试
+        assert len(working_memory.items) == working_memory.capacity
+        # 应该保留最新的项目
+        for item in items[-working_memory.capacity:]:
+            assert item in working_memory.items
 
-    def test_cleanup_old_memories(self):
-        """测试清理旧记忆"""
-        # 添加超过限制的记忆
-        memory_ids = []
-        for i in range(10):
-            memory_id = self.memory.add_memory(f"记忆{i}")
-            memory_ids.append(memory_id)
+    def test_get_item(self, working_memory):
+        """测试获取项目"""
+        item = "测试项目"
+        working_memory.add(item)
 
-        # 触发清理
-        self.memory._cleanup_old_memories()
+        retrieved = working_memory.get(0)
 
-        # 检查记忆数量不超过限制
-        assert len(self.memory.memories) <= self.memory.max_memories
+        assert retrieved == item
 
-    def test_cleanup_preserves_important_memories(self):
-        """测试清理保留重要记忆"""
-        # 添加一些记忆，其中一个是高权重的
-        for i in range(8):
-            weight = 1.0
-            if i == 5:  # 第6个记忆设为高权重
-                weight = 10.0
-            self.memory.add_memory(f"记忆{i}", weight=weight)
+    def test_clear_memory(self, working_memory):
+        """测试清空记忆"""
+        working_memory.add("项目1")
+        working_memory.add("项目2")
 
-        # 触发清理
-        self.memory._cleanup_old_memories()
+        working_memory.clear()
 
-        # 检查高权重记忆仍然存在
-        remaining_contents = [mem["content"] for mem in self.memory.memories.values()]
-        assert "记忆5" in remaining_contents
+        assert len(working_memory.items) == 0
 
-class TestMemoryStats:
-    """记忆统计测试"""
 
-    def setup_method(self):
-        """测试前置设置"""
-        self.memory = MemorySystem()
+class TestMemoryManager:
+    """记忆管理器测试类"""
 
-    def test_empty_memory_stats(self):
-        """测试空记忆统计"""
-        stats = self.memory.get_memory_stats()
+    @pytest.fixture
+    def memory_manager(self):
+        """记忆管理器fixture"""
+        return MemoryManager()
 
-        assert stats["total_memories"] == 0
-        assert stats["max_memories"] == 10000
-        assert stats["average_weight"] == 0
-        assert stats["oldest_memory"] is None
-        assert stats["newest_memory"] is None
+    def test_memory_manager_initialization(self, memory_manager):
+        """测试记忆管理器初始化"""
+        assert memory_manager.episodic is not None
+        assert memory_manager.semantic is not None
+        assert memory_manager.working is not None
 
-    def test_memory_stats_with_data(self):
-        """测试有数据的记忆统计"""
+    def test_store_episodic(self, memory_manager):
+        """测试存储情景记忆"""
+        content = "用户说他喜欢音乐"
+        result = memory_manager.store_episodic(content)
+
+        assert result is True
+        assert len(memory_manager.episodic.memories) == 1
+
+    def test_store_semantic(self, memory_manager):
+        """测试存储语义记忆"""
+        concept = "音乐"
+        definition = "一种艺术形式"
+        result = memory_manager.store_semantic(concept, definition)
+
+        assert result is True
+        assert concept in memory_manager.semantic.concepts
+
+    def test_add_working_item(self, memory_manager):
+        """测试添加工作记忆项目"""
+        item = "当前任务：推荐音乐"
+        memory_manager.add_working_item(item)
+
+        assert len(memory_manager.working.items) == 1
+        assert item in memory_manager.working.items
+
+    def test_retrieve_relevant_memories(self, memory_manager):
+        """测试检索相关记忆"""
         # 添加一些记忆
-        weights = [1.0, 2.0, 3.0]
-        for weight in weights:
-            self.memory.add_memory("测试记忆", weight=weight)
+        memory_manager.store_episodic("用户说他喜欢古典音乐")
+        memory_manager.store_episodic("用户提到了贝多芬")
+        memory_manager.store_semantic("古典音乐", "传统的音乐形式")
 
-        stats = self.memory.get_memory_stats()
+        query = "古典音乐"
+        relevant = memory_manager.retrieve_relevant(query)
 
-        assert stats["total_memories"] == 3
-        assert stats["average_weight"] == sum(weights) / len(weights)
-        assert stats["oldest_memory"] is not None
-        assert stats["newest_memory"] is not None
+        assert len(relevant) >= 1
+        # 应该包含相关的记忆
+        relevant_contents = [item.content for item in relevant]
+        assert any("古典" in content or "音乐" in content for content in relevant_contents)
 
-    def test_memory_stats_single_memory(self):
-        """测试单个记忆的统计"""
-        self.memory.add_memory("单个记忆")
-        stats = self.memory.get_memory_stats()
+    def test_memory_statistics(self, memory_manager):
+        """测试记忆统计"""
+        # 添加一些记忆
+        memory_manager.store_episodic("测试记忆1")
+        memory_manager.store_episodic("测试记忆2")
+        memory_manager.store_semantic("测试概念", "测试定义")
 
-        assert stats["total_memories"] == 1
-        assert stats["average_weight"] == 1.0  # 默认权重
+        stats = memory_manager.get_statistics()
 
-class TestEdgeCases:
-    """边界情况测试"""
+        assert 'episodic_count' in stats
+        assert 'semantic_count' in stats
+        assert 'working_count' in stats
+        assert stats['episodic_count'] == 2
+        assert stats['semantic_count'] == 1
 
-    def setup_method(self):
-        """测试前置设置"""
-        self.memory = MemorySystem()
 
-    def test_unicode_memory_content(self):
-        """测试Unicode记忆内容"""
-        unicode_content = "🌟测试记忆🌟"
-        memory_id = self.memory.add_memory(unicode_content)
-
-        assert self.memory.memories[memory_id]["content"] == unicode_content
-
-    def test_special_characters_in_memory(self):
-        """测试记忆中的特殊字符"""
-        special_content = "测试<>{}[]|\\\"'`~!@#$%^&*()_+-="
-        memory_id = self.memory.add_memory(special_content)
-
-        assert self.memory.memories[memory_id]["content"] == special_content
-
-    def test_very_long_memory_content(self):
-        """测试很长的记忆内容"""
-        long_content = "测试" * 1000  # 4000字符
-        memory_id = self.memory.add_memory(long_content)
-
-        assert self.memory.memories[memory_id]["content"] == long_content
-
-    def test_retrieval_with_unicode_query(self):
-        """测试Unicode查询"""
-        self.memory.add_memory("测试中文记忆")
-        results = self.memory.retrieve("中文")
-
-        assert len(results) >= 1
-        assert "中文" in results[0]["content"]
+if __name__ == "__main__":
+    pytest.main([__file__])

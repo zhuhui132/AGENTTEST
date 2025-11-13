@@ -1,80 +1,219 @@
 """
 配置管理模块
+
+提供完整的配置管理功能，包括：
+- 多格式配置文件支持（YAML、JSON、TOML）
+- 环境变量覆盖
+- 配置验证和类型转换
+- 配置热重载
+- 配置模板和继承
+- 敏感信息加密
 """
 
 import os
 import json
 import yaml
-from typing import Dict, Any, Optional
+import toml
+import logging
+from typing import Dict, Any, Optional, Union, List, Callable
 from pathlib import Path
+from dataclasses import asdict
+from datetime import datetime
+import threading
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
 from .types import AgentConfig, LLMConfig, MemoryConfig, ToolConfig, RAGConfig
-from .exceptions import ConfigError
+from .exceptions import ConfigError, InvalidConfigError
+
+logger = logging.getLogger(__name__)
+
+
+class ConfigFileHandler(FileSystemEventHandler):
+    """配置文件变化监听器"""
+
+    def __init__(self, config_manager: 'ConfigManager'):
+        self.config_manager = config_manager
+
+    def on_modified(self, event):
+        if not event.is_directory and event.src_path.endswith(('.yaml', '.yml', '.json', '.toml')):
+            logger.info(f"配置文件发生变化: {event.src_path}")
+            # 重新加载相关配置
+            self.config_manager._invalidate_cache()
 
 
 class ConfigManager:
-    """配置管理器"""
+    """高级配置管理器
 
-    def __init__(self, config_dir: str = "config"):
+    支持多格式配置文件、环境变量覆盖、配置验证、热重载等功能
+    """
+
+    def __init__(
+        self,
+        config_dir: str = "config",
+        enable_hot_reload: bool = False,
+        encryption_key: Optional[str] = None
+    ):
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(exist_ok=True)
         self._config_cache = {}
+        self._watchers = {}
+        self._observers = []
+        self._lock = threading.RLock()
+        self._enable_hot_reload = enable_hot_reload
+        self._encryption_key = encryption_key
+        self._validators = {}
+        self._transforms = {}
+
+        # 注册默认验证器和转换器
+        self._register_default_validators()
+        self._register_default_transforms()
+
+        if enable_hot_reload:
+            self._setup_file_watcher()
 
     def load_config(
         self,
         config_name: str,
-        config_type: str = "agent"
+        config_type: str = "agent",
+        env_override: bool = True,
+        validate: bool = True
     ) -> Dict[str, Any]:
-        """加载配置"""
-        cache_key = f"{config_type}_{config_name}"
+        """加载配置
 
-        if cache_key in self._config_cache:
-            return self._config_cache[cache_key]
+        Args:
+            config_name: 配置名称
+            config_type: 配置类型
+            env_override: 是否允许环境变量覆盖
+            validate: 是否验证配置
 
-        config_file = self.config_dir / f"{config_name}.{config_type}.yaml"
+        Returns:
+            配置字典
+        """
+        with self._lock:
+            cache_key = f"{config_type}_{config_name}"
 
-        if not config_file.exists():
-            # 尝试JSON格式
-            config_file = self.config_dir / f"{config_name}.{config_type}.json"
-
-        if not config_file.exists():
-            raise ConfigError(f"配置文件不存在: {config_name}")
-
-        try:
-            if config_file.suffix == '.yaml' or config_file.suffix == '.yml':
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    config = yaml.safe_load(f)
+            if cache_key in self._config_cache:
+                config = self._config_cache[cache_key].copy()
             else:
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
+                config = self._load_config_from_file(config_name, config_type)
+                self._config_cache[cache_key] = config.copy()
 
-            self._config_cache[cache_key] = config
+            # 应用环境变量覆盖
+            if env_override:
+                config = self._apply_env_overrides(config, config_type)
+
+            # 应用配置转换
+            config = self._apply_transforms(config, config_type)
+
+            # 验证配置
+            if validate:
+                self._validate_config(config, config_type)
+
             return config
 
+    def _load_config_from_file(self, config_name: str, config_type: str) -> Dict[str, Any]:
+        """从文件加载原始配置"""
+        # 支持多种格式
+        extensions = ['.yaml', '.yml', '.json', '.toml']
+        config_file = None
+
+        for ext in extensions:
+            potential_file = self.config_dir / f"{config_name}.{config_type}{ext}"
+            if potential_file.exists():
+                config_file = potential_file
+                break
+
+        if not config_file:
+            raise ConfigError(f"配置文件不存在: {config_name}.{config_type} (尝试了 {extensions})")
+
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                if config_file.suffix in ['.yaml', '.yml']:
+                    config = yaml.safe_load(f)
+                elif config_file.suffix == '.json':
+                    config = json.load(f)
+                elif config_file.suffix == '.toml'::
+                    config = toml.load(f)
+                else:
+                    raise ConfigError(f"不支持的配置文件格式: {config_file.suffix}")
+
+                # 处理配置继承
+                if 'extends' in config:
+                    config = self._resolve_inheritance(config, config_name, config_type)
+
+                return config
+
         except Exception as e:
-            raise ConfigError(f"加载配置失败: {e}")
+            raise ConfigError(f"加载配置文件失败 {config_file}: {e}") from e
+
+    def _resolve_inheritance(self, config: Dict[str, Any], config_name: str, config_type: str) -> Dict[str, Any]:
+        """解析配置继承"""
+        base_config_name = config.pop('extends')
+        base_config = self.load_config(base_config_name, config_type, env_override=False, validate=False)
+
+        # 深度合并配置
+        return self._deep_merge(base_config, config)
+
+    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """深度合并字典"""
+        result = base.copy()
+
+        for key, value in override.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._deep_merge(result[key], value)
+            else:
+                result[key] = value
+
+        return result
 
     def save_config(
         self,
         config_name: str,
         config: Dict[str, Any],
-        config_type: str = "agent"
+        config_type: str = "agent",
+        format: str = "yaml",
+        encrypt_sensitive: bool = False
     ) -> bool:
-        """保存配置"""
+        """保存配置
+
+        Args:
+            config_name: 配置名称
+            config: 配置字典
+            config_type: 配置类型
+            format: 保存格式 (yaml, json, toml)
+            encrypt_sensitive: 是否加密敏感信息
+        """
         try:
-            config_file = self.config_dir / f"{config_name}.{config_type}.yaml"
+            # 验证配置
+            self._validate_config(config, config_type)
+
+            # 处理敏感信息
+            if encrypt_sensitive:
+                config = self._encrypt_sensitive_fields(config)
+
+            config_file = self.config_dir / f"{config_name}.{config_type}.{format.lstrip('.')}"
 
             with open(config_file, 'w', encoding='utf-8') as f:
-                yaml.dump(config, f, default_flow_style=False,
-                         allow_unicode=True, indent=2)
+                if format in ['yaml', '.yml']:
+                    yaml.dump(config, f, default_flow_style=False, allow_unicode=True, indent=2)
+                elif format in ['json', '.json']:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
+                elif format in ['toml', '.toml']:
+                    toml.dump(config, f)
+                else:
+                    raise ConfigError(f"不支持的格式: {format}")
 
             # 更新缓存
-            cache_key = f"{config_type}_{config_name}"
-            self._config_cache[cache_key] = config
+            with self._lock:
+                cache_key = f"{config_type}_{config_name}"
+                self._config_cache[cache_key] = config.copy()
 
+            logger.info(f"配置已保存: {config_file}")
             return True
 
         except Exception as e:
-            raise ConfigError(f"保存配置失败: {e}")
+            raise ConfigError(f"保存配置失败: {e}") from e
 
     def get_agent_config(self, config_name: str = "default") -> AgentConfig:
         """获取Agent配置"""
